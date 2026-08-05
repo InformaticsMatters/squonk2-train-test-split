@@ -20,6 +20,7 @@ scipy = "^1.11"
 scikit-learn = "^1.4"
 rdkit = "^2025.9.3"
 setuptools = "^80.9.0"
+im-rdkit-utilities = "^1.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

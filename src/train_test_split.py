@@ -2,8 +2,6 @@
 """Template echo utility."""
 
 import argparse
-import csv
-import gzip
 import logging
 import os
 from collections import defaultdict
@@ -14,169 +12,21 @@ import pandas as pd
 # Import Data Manager DmLog utility.
 # Messages emitted using this result in Task Events.
 from dm_job_utilities.dm_log import DmLog
+from dm_job_utilities.utils import read_delimiter
 from rdkit import Chem
-from rdkit.Chem import Descriptors
 from rdkit.Chem.Scaffolds import MurckoScaffold
+import rdkit_utils
 
 # import deepchem as dc
 # from deepchem.data import NumpyDataset
 # from deepchem.splits import ScaffoldSplitter
 
 
-ID_COL_NAME = "ID"
-SMILES_COL_NAME = "SMILES"
 DEFAULT_SPLIT_RATIOS = [0.5, 0.25, 0.25]
 DEFAULT_SPLIT_NAMES = ["training", "test", "validation"]
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def expand_path(path):
-    """
-    Create any necessary directories to ensure that the file path is valid
-
-    :param path: a filename or directory that might or not exist
-    """
-    head_tail = os.path.split(path)
-    if head_tail[0]:
-        if not os.path.isdir(head_tail[0]):
-            os.makedirs(head_tail[0], exist_ok=True)
-
-
-def read_delimiter(sep):
-    if sep:
-        if "tab" == sep:
-            delimiter = "\t"
-        elif "space" == sep:
-            delimiter = None
-        elif "comma" == sep:
-            delimiter = ","
-        elif "pipe" == sep:
-            delimiter = "|"
-        else:
-            delimiter = sep
-    else:
-        delimiter = None
-    return delimiter
-
-
-class SmilesReader:
-
-    def __init__(
-        self, filename, read_header, delimiter, id_column, mol_column, recs_to_read
-    ):
-        self.delimiter = delimiter if delimiter is not None else " "
-        if mol_column is None:
-            if id_column == 0:
-                self.mol_column = 1
-            else:
-                self.mol_column = 0
-        else:
-            self.mol_column = mol_column
-
-        if id_column is None:
-            self.id_column = None
-        else:
-            self.id_column = int(id_column)
-
-        tmp_reader, file_reader = self.create_readers(filename)
-        # read header line
-        if read_header:
-            tokens = next(tmp_reader)
-            # tokens = self.tokenize(line)
-            self.field_names = []
-            for token in tokens:
-                self.field_names.append(token.strip())
-        else:
-            self.field_names = []
-            for i in range(
-                0,
-                max(
-                    1,
-                    self.mol_column + 1,
-                    0 if self.id_column is None else self.id_column + 1,
-                ),
-            ):
-                self.field_names.append(None)
-            self.field_names[self.mol_column] = SMILES_COL_NAME
-            if self.id_column is not None:
-                self.field_names[self.id_column] = ID_COL_NAME
-
-        max_num_tokens = 0
-        for i in range(0, recs_to_read):
-            line = next(tmp_reader, None)
-            if not line:
-                break
-            else:
-                num_tokens = len(line)
-                if num_tokens > max_num_tokens:
-                    max_num_tokens = num_tokens
-
-        if max_num_tokens > len(self.field_names):
-            for i in range(len(self.field_names), max_num_tokens):
-                self.field_names.append("field" + str(i + 1))
-
-        file_reader.close()
-
-        # now create the read reader and discard the header
-        self.reader, self.file = self.create_readers(filename)
-        if read_header:
-            line = next(self.reader)
-
-    def create_readers(self, filename):
-        if filename.endswith(".gz"):
-            r = gzip.open(filename, "rt", encoding="utf-8")
-            return csv.reader(r, delimiter=self.delimiter), r
-        else:
-            r = open(filename, "rt", encoding="utf-8")
-            return csv.reader(r, delimiter=self.delimiter), r
-
-    def get_mol_field_name(self):
-        if self.field_names:
-            return self.field_names[self.mol_column]
-        else:
-            return None
-
-    def read(self):
-        tokens = next(self.reader, None)
-        if tokens:
-            smi = tokens[self.mol_column]
-            if self.id_column is not None:
-                mol_id = tokens[self.id_column]
-            else:
-                mol_id = None
-
-            mol = Chem.MolFromSmiles(smi)
-            props = []
-
-            for i, token in enumerate(tokens):
-                token = token.strip()
-                if not (i == self.mol_column or i == self.id_column):
-                    props.append(token)
-                    if mol:
-                        if self.field_names and len(self.field_names) > i:
-                            mol.SetProp(self.field_names[i], token)
-                        else:
-                            mol.SetProp("field" + str(i), token)
-
-            t = (mol, smi, mol_id, props)
-            return t
-        else:
-            return None
-
-    def get_extra_field_names(self):
-        if self.field_names:
-            results = []
-            for i, name in enumerate(self.field_names):
-                if i != 0 and i != self.id_column:
-                    results.append(name)
-            return results
-        else:
-            return []
-
-    def close(self):
-        self.file.close()
 
 
 def get_scaffold(mol: Chem.rdchem.Mol) -> str:
@@ -279,44 +129,6 @@ def check_scaffold_leakage(mols, splits):
             assert not overlap, f"Leakage between split {i} and {j}"
 
 
-def fragment(mol, fragment_method, *args, **kwargs):  # pylint: disable=unused-argument
-    """
-    Generate the largest fragment in the molecule e.g. typically a desalt operation
-
-    To be used as a Pandas data frame vector function
-    :param mol: The molecule to fragment
-    :param mode: The strategy for picking the largest (mw or hac)
-    :return:
-    """
-
-    frags = Chem.GetMolFrags(mol, asMols=True)
-
-    if len(frags) == 1:
-        return mol
-    else:
-        # TODO - handle ties
-        biggest_mol = frags[0]
-        if fragment_method == "hac":
-            biggest_count = 0
-            for frag in frags:
-                hac = frag.GetNumHeavyAtoms()
-                if hac > biggest_count:
-                    biggest_count = hac
-                    biggest_mol = frag
-        elif fragment_method == "mw":
-            biggest_mw = 0
-            for frag in frags:
-                mw = Descriptors.MolWt(frag)
-                if mw > biggest_mw:
-                    biggest_mw = mw
-                    biggest_mol = frag
-        else:
-            DmLog.emit_event(f"Invalid fragment mode: {fragment_method}")
-            raise ValueError("Invalid fragment mode:", fragment_method)
-
-    return biggest_mol
-
-
 def run(
     filename,
     delimiter=None,
@@ -363,7 +175,7 @@ def run(
     df["rdkit_mol"] = df[mol_column].apply(
         lambda smiles: Chem.MolFromSmiles(smiles),  # pylint: disable=unnecessary-lambda
     )
-    df["fragment"] = df["rdkit_mol"].apply(fragment, args=(fragment_method), axis=1)
+    df["fragment"] = df["rdkit_mol"].apply(rdkit_utils.fragment, args=(fragment_method,))
 
     seed = 42
 
