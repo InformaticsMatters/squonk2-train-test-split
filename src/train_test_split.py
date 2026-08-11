@@ -308,6 +308,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # python src/train_test_split.py --input=data/caco2_mordred_filtered_scaled.smi --delimiter=comma --id-column=0 --mol-column=Drug --y-column=Y --read-header --write-header --split-method=random
+    # python src/train_test_split.py -i data/caco2_mordred_filtered_scaled.smi --delimiter=comma --id-column=0 --mol-column=Drug --y-column=Y --read-header --write-header --split-method=random
 
     main()
