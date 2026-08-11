@@ -36,8 +36,6 @@ jobs:
       {% if readHeader is defined and readHeader %}--read-header{% endif %}
       {% if writeHeader is defined and writeHeader %}--write-header{% endif %}
       {% if separator is defined %}--delimiter '{{ separator }}'{% endif %}
-      {% if interval is defined %}--interval '{{ interval }}'{% endif %}
-      {% if missingVal is defined %}--missing-val '{{ missingVal }}'{% endif %}
       {% if fragmentMethod is defined %}--fragment-method '{{ fragmentMethod }}'{% endif %}
       {% if splitMethod is defined %}--split-method '{{ splitMethod }}'{% endif %}
     variables:
@@ -52,8 +50,6 @@ jobs:
         - writeHeader
         - separator
         - readRecords
-        - interval
-        - missingVal
         - fragmentMethod
         - splitMethod
       inputs:
