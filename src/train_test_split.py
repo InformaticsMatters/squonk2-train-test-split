@@ -214,53 +214,12 @@ def list_of_floats(arg):
     return l
 
 
-def str_or_int(value: str):
-    try:
-        return int(value)
-    except ValueError:
-        return value
-
 
 def main():
     parser = argparse.ArgumentParser(description="Split dataset")
-    input_group = parser.add_argument_group("Input/output options")
-    input_group.add_argument(
-        "-i", "--input", required=True, help="Input file (.smi or .sdf)"
-    )
-    input_group.add_argument(
-        "--omit-fields",
-        action="store_true",
-        help="Don't include fields from the input in the output",
-    )
-
-    input_group.add_argument(
-        "--id-column",
-        type=str_or_int,
-        help="Column for name field (zero based integer for .smi, text for SDF)",
-    )
-    input_group.add_argument(
-        "--mol-column",
-        type=str_or_int,
-        help="Column name for molecule when using delineated text formats",
-    )
-    input_group.add_argument(
-        "--y-column",
-        type=str_or_int,
-        help="Column name for the Y variable",
-    )
-    input_group.add_argument(
-        "--read-header",
-        action="store_true",
-        help="Read a header line with the field names when reading .smi or .txt",
-    )
-    input_group.add_argument(
-        "--write-header",
-        action="store_true",
-        help="Write a header line when writing .smi or .txt",
-    )
     # to pass tab as the delimiter specify it as $'\t' or use one of
     # the symbolic names 'comma', 'tab', 'space' or 'pipe'
-    input_group.add_argument("-d", "--delimiter", help="Delimiter when using SMILES")
+    rdkit_utils.add_common_molecule_io_args(parser, include_y_column=True)
 
     rdkit_generic_group = parser.add_argument_group("General RDKit options")
     rdkit_generic_group.add_argument(
