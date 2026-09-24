@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "train-test-split"
-version = "1.0.0"
-description = "A GitHub Template Repository that you can use for Data Manager Job implementations."
+version = "1.1.0"
+description = "Split a dataset into training, test and validation subsets"
 authors = [
   "Alan Christie <achristie@informaticsmatters.com>",
   "Tim Dudgeon <tdudgeon@informaticsmatters.com>",
@@ -12,19 +12,20 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.14"
 im-data-manager-job-utilities = ">=1.4.0"
-# im-data-manager-job-utilities = "1.2.0"
-# numpy = "^1.26"
 numpy = "^2"
 pandas = "^2.2"
 scipy = "^1.11"
 scikit-learn = "^1.4"
-rdkit = "^2025.9.1"
+# RDKit uses CalVer, so a caret does not mean what it usually does:
+# '^2025.9.1' expands to '>=2025.9.1,<2026.0.0' and excludes every 2026
+# release. Use a plain floor.
+rdkit = ">=2026.3.6"
 setuptools = "^80.9.0"
-im-rdkit-utilities = ">=1.1.2"
+im-rdkit-utilities = ">=1.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
-im-jote = "^0.11"
+im-jote = ">=0.14.0"
 pre-commit = "^3"
 pylint = "^4"
 isort = "^7"
