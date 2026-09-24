@@ -1,0 +1,24 @@
+---
+name: build-all-with-push-option
+
+# A callable workflow to build (and optionally) push container images.
+
+on:
+  workflow_call:
+    inputs:
+      image-tag:
+        type: string
+        required: true
+        default: latest
+      image-push:
+        type: boolean
+        required: false
+
+jobs:
+  build-train-test-split:
+    uses: ./.github/workflows/build-image-with-push-option.yaml
+    secrets: inherit
+    with:
+      image-name: train-test-split
+      image-tag: ${{ inputs.image-tag }}
+      image-push: ${{ inputs.image-push }}

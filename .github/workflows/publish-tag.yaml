@@ -1,7 +1,17 @@
 ---
 name: publish-tag
 
-# Actions that take place on tags.
+# Actions that publish an immutable, statically-tagged image.
+#
+# Run this manually when cutting a release. The tag you give is the tag the
+# image is published with, and it must be one that has never been published
+# before - the Data Manager treats any tag other than 'latest' or 'stable' as
+# static and caches it per Kubernetes node, so a reused tag leaves some nodes
+# running the old content. See docs/versioning.md in the squonk2-jobs
+# umbrella repository.
+#
+# Give the same value to the Job Definition 'version' and 'image.tag' fields,
+# then cut the matching Git tag.
 
 # -----------------
 # Control variables (GitHub Secrets)
@@ -20,33 +30,21 @@ name: publish-tag
 # Environment         (n/a)
 
 on:
-  push:
-    tags:
-    - '**'
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: The immutable image tag to build and publish (e.g. 1.1.0)
+        type: string
+        required: true
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Inject slug/short variables
-      uses: rlespinasse/github-slug-action@v4
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    - name: Set lower-case REPOSITORY
-      run: |
-        echo "REPOSITORY=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-    - name: Build and push
-      uses: docker/build-push-action@v3
-      with:
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ env.REPOSITORY }}:${{ env.GITHUB_REF_SLUG }}
+  call-test:
+    uses: ./.github/workflows/test.yaml
+
+  call-build-with-push:
+    needs: call-test
+    uses: ./.github/workflows/build-all-with-push-option.yaml
+    secrets: inherit
+    with:
+      image-tag: ${{ inputs.image-tag }}
+      image-push: true

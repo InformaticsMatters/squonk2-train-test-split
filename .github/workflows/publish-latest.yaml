@@ -1,8 +1,8 @@
 ---
-name: publish-stable
+name: publish-latest
 
-# Actions that take place on the 'main' branch (and nightly).
-# Here we build and push a 'stable' image.
+# Actions that take place on the 'staging' branch.
+# Here we build and push a 'latest' image.
 
 # -----------------
 # Control variables (GitHub Secrets)
@@ -23,10 +23,7 @@ name: publish-stable
 on:
   push:
     branches:
-    - main
-  schedule:
-  # Build the default branch (typically this branch, main) every day at 6:01am...
-  - cron: '1 6 * * *'
+    - staging
 
 jobs:
   call-test:
@@ -37,5 +34,5 @@ jobs:
     uses: ./.github/workflows/build-all-with-push-option.yaml
     secrets: inherit
     with:
-      image-tag: stable
+      image-tag: latest
       image-push: true

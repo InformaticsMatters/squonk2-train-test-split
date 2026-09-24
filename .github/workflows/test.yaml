@@ -1,0 +1,46 @@
+---
+name: test
+
+# A callable workflow to execute repository tests.
+#
+# This builds the image locally and runs the Job tests against it, rather than
+# validating the Job Definitions with '--dry-run' alone. Nothing is pushed, so
+# no registry credentials are needed and no per-branch tags accumulate on
+# Docker Hub.
+
+on:
+  workflow_call:
+
+env:
+  # Match the Dockerfile, so CI resolves dependencies the way the image does.
+  POETRY_VERSION: 2.2
+  # The tag the image is built with here, and the tag jote is told to use.
+  # It is never pushed.
+  CI_IMAGE_TAG: ci
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        # Match 'python' in pyproject.toml and the Dockerfile base image.
+        python-version: '3.14'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --no-cache-dir poetry=="${{ env.POETRY_VERSION }}"
+        POETRY_VIRTUALENVS_CREATE=false poetry install --only dev --no-root --no-directory
+    - name: Pre-commit
+      run: pre-commit run --all-files
+    - name: Build the image under test
+      run: |
+        # Tagged with the image name the Job Definition uses, so that
+        # 'jote --image-tag' below resolves it from the local image store.
+        docker build -f Dockerfile . \
+          -t informaticsmatters/train-test-split:${{ env.CI_IMAGE_TAG }}
+    - name: Jote
+      run: jote --image-tag ${{ env.CI_IMAGE_TAG }}

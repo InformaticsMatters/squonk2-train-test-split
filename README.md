@@ -1,79 +1,61 @@
-# data-manager-job-template
+# squonk2-train-test-split
 
 ![Data Manager Job: 2021.1](https://img.shields.io/badge/data%20manager%20job-2021.1-000000?labelColor=dc332e)
 
+A Squonk2 Data Manager Job that splits a dataset into training, test and
+validation subsets.
+
+Splitting is either `random` or `scaffold`-based; scaffold splitting groups
+molecules by their Murcko scaffold so that related structures do not straddle
+the split, which gives a more honest estimate of how a model generalises.
+Scaffolds can optionally be reduced by heavy-atom count (`hac`) or molecular
+weight (`mw`).
+
+The Job Definition lives in [`data-manager/jobs.yaml`](data-manager/jobs.yaml)
+and belongs to the `im-virtual-screening` collection.
+
+## The image
+
+The image is built from [`Dockerfile`](Dockerfile) and published as
+`informaticsmatters/train-test-split`. Dependencies are managed with Poetry;
+`poetry.lock` is what the image installs, so a dependency change means
+relocking with the Poetry version the `Dockerfile` pins.
+
+Note that RDKit uses CalVer, so a caret constraint does not mean what it
+usually does: `^2025.9.1` expands to `>=2025.9.1,<2026.0.0` and silently
+excludes every 2026 release. Prefer a plain `>=` floor.
+
+## Testing
+
+Jobs are tested with [jote]:
+
+```bash
+poetry install --only dev
+docker build -f Dockerfile . -t informaticsmatters/train-test-split:ci
+jote --image-tag ci
 ```
-FORK THIS REPOSITORY
-AND REPLACE THE FOLLOWING
-WITH YOUR OWN README/JOB DOCUMENTATION
-```
 
-![Architecture](https://img.shields.io/badge/architecture-amd64%20%7C%20arm64-lightgrey)
+That is exactly what CI does on every branch — it builds the image and runs the
+real Job tests against it, rather than validating the Job Definition alone.
+Nothing is pushed, so no registry credentials are needed.
 
-[![build](https://github.com/InformaticsMatters/data-manager-job-template/actions/workflows/build.yaml/badge.svg)](https://github.com/InformaticsMatters/data-manager-job-template/actions/workflows/build.yaml)
-[![publish-tag](https://github.com/InformaticsMatters/data-manager-job-template/actions/workflows/publish-tag.yaml/badge.svg)](https://github.com/InformaticsMatters/data-manager-job-template/actions/workflows/publish-tag.yaml)
-[![publish-stable](https://github.com/InformaticsMatters/data-manager-job-template/actions/workflows/publish-stable.yaml/badge.svg)](https://github.com/InformaticsMatters/data-manager-job-template/actions/workflows/publish-stable.yaml)
+## Releasing
 
-![GitHub](https://img.shields.io/github/license/informaticsmatters/data-manager-job-template)
+1. Run the `publish-tag` workflow with the new tag.
+2. Set the Job Definition `version` and `image.tag` to that same value.
+3. Cut the matching Git tag.
 
-![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/informaticsmatters/data-manager-job-template)
+Never reuse a container tag — the Data Manager caches any tag other than
+`latest`/`stable` per Kubernetes node. See `docs/versioning.md` in the
+[squonk2-jobs] umbrella repository.
 
-A GitHub Template Repository that you can [use] for Data Manager Job
-implementations.
+## Architecture
 
-This repository is a minimal template for Data Manager Jobs. Although it contains
-scaffolding to test and build a Python-based Job, including GitHub actions to
-build and publish the implementation container image you can replace the
-`src` files and associated `Dockerfile` to support any language you choose.
-Ultimately the Job is published as a container image, you simply have to
-provide the implementation and a suitable `data-manager/jobs.yaml`
-definition.
+Images are built for `linux/amd64`. The workflows this repository was forked
+from declared `linux/amd64,linux/arm64`, but they never ran, and no arm64 image
+has ever been published. Building RDKit, SciPy and scikit-learn for arm64 under
+QEMU emulation is slow enough to want a dedicated runner rather than an
+emulated one, so it is not enabled here.
 
-From a fork you should be able to build and run the tests for the example
-Job that it defines, start with this, and you'll know you're starting with
-a working framework: -
-
-    poetry shell
-    poetry install --no-root
-
-    pre-commit install -t commit-msg -t pre-commit
-
-    docker-compose build
-    jote
-
-    deactivate  
-
-> Note: You MUST provide at least one test for every Job your repository
-defines, and you MUST use our Job Tester ([im-jote]) to run those tests -
-it's what we will use and if it fails the Job Tester we are unlikely
-to deploy the image.
-
-You must have at least one manifest file and at least one job definition file.
-This template contains a single working example.
-
-As well as replacing this README with your own you will want to
-adjust the following additional files: -
-
-1. `DEVELOPER-READEM.md` to name the repository you've forked to
-2. `data-manager/manifest.yaml`
-3. `data-manager/job.yaml`
-4. The GitHub Actions, which expects repository secrets `DOCKERHUB_USERNAME`
-   and `DOCKERHUB_TOKEN`
-5. Adjust the `.gitignore` to satisfy your won tooling
-6. Add tests (and test data)
-
-## ARM64 (M1) processor support
-To assist in local execution on the ARM64 (Apple M1) series of processors
-your job container image must compile for its architecture. The GitHub actions
-supplied in this template do that for you by employing the Docker [buildx]
-actions.
-
-You can test that your intended mage builds for the ARM64 processor using the
-notes in this public [buildx gist].
-
----
-
-[buildx]: https://docs.docker.com/buildx/working-with-buildx
-[buildx gist]: https://gist.github.com/alanbchristie/14da3444f3fed6f0adcf877a82b56804.js
-[im-jote]: https://pypi.org/project/im-jote
-[use]: https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template
+[jote]: https://github.com/InformaticsMatters/squonk2-data-manager-job-tester
+[squonk2-jobs]: https://github.com/InformaticsMatters/squonk2-jobs

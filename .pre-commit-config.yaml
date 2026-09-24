@@ -30,12 +30,12 @@ repos:
 
 # Black
 - repo: https://github.com/psf/black
-  rev: 24.8.0
+  rev: 25.12.0
   hooks:
   - id: black
     args:
     - --target-version
-    - py311
+    - py314
 
 # MyPy
 - repo: https://github.com/pre-commit/mirrors-mypy

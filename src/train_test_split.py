@@ -8,6 +8,7 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+import rdkit_utils
 
 # Import Data Manager DmLog utility.
 # Messages emitted using this result in Task Events.
@@ -15,7 +16,6 @@ from dm_job_utilities.dm_log import DmLog
 from dm_job_utilities.utils import read_delimiter
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
-import rdkit_utils
 
 # import deepchem as dc
 # from deepchem.data import NumpyDataset
@@ -175,7 +175,9 @@ def run(
     df["rdkit_mol"] = df[mol_column].apply(
         lambda smiles: Chem.MolFromSmiles(smiles),  # pylint: disable=unnecessary-lambda
     )
-    df["fragment"] = df["rdkit_mol"].apply(rdkit_utils.fragment, args=(fragment_method,))
+    df["fragment"] = df["rdkit_mol"].apply(
+        rdkit_utils.fragment, args=(fragment_method,)
+    )
 
     seed = 42
 
@@ -212,7 +214,6 @@ def list_of_floats(arg):
         DmLog.emit_event("The sum of splits must be equal to 1")
         raise argparse.ArgumentError(arg, "The sum of splits must be equal to 1")
     return l
-
 
 
 def main():
