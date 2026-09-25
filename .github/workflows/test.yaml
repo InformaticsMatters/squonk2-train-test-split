@@ -33,9 +33,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install --no-cache-dir poetry=="${{ env.POETRY_VERSION }}"
-        POETRY_VIRTUALENVS_CREATE=false poetry install --only dev --no-root --no-directory
+        # Into a virtualenv, NOT 'POETRY_VIRTUALENVS_CREATE=false'. The dev
+        # group and poetry share dependencies - virtualenv, platformdirs,
+        # python-discovery - and installing the group alongside poetry
+        # downgrades them underneath it. That breaks poetry mid-install:
+        # 'FileNotFoundError: .../python_discovery/_py_info_collect.py'.
+        # Hence 'poetry run' on the steps below.
+        poetry install --only dev --no-root --no-directory
     - name: Pre-commit
-      run: pre-commit run --all-files
+      run: poetry run pre-commit run --all-files
     - name: Build the image under test
       run: |
         # Tagged with the image name the Job Definition uses, so that
@@ -43,4 +49,4 @@ jobs:
         docker build -f Dockerfile . \
           -t informaticsmatters/train-test-split:${{ env.CI_IMAGE_TAG }}
     - name: Jote
-      run: jote --image-tag ${{ env.CI_IMAGE_TAG }}
+      run: poetry run jote --image-tag ${{ env.CI_IMAGE_TAG }}
